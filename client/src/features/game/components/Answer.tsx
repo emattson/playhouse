@@ -58,9 +58,9 @@ const AnswerText: React.FC<AnswerProps> = ({ answer, submitted, onSubmit }) => {
   const [errorValue, setErrorValue] = useState("");
 
   const handleClick = () => {
-    if (value.toLowerCase() === answer?.toLowerCase()) {
+    if (Number.isNaN(parseInt(value))) {
       setErrorValue(
-        "You have selected the right answer. Please write a tricky wrong answer instead."
+        "You must input a valid number. Please answer in a number greater than 0."
       );
       return;
     }

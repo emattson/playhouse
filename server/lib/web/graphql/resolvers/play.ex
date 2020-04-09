@@ -2,6 +2,7 @@ defmodule Web.GraphQL.Resolvers.Play do
   alias Database.Catalog
   alias Game.GameSupervisor
   alias Game.GameServer
+  require Logger
 
   def game_create(_, %{pack: pack}, _) do
     code = Catalog.generate_code()
@@ -9,7 +10,8 @@ defmodule Web.GraphQL.Resolvers.Play do
     case GameSupervisor.start_game(code, pack) do
       {:ok, _game_pid} ->
         {:ok, %{code: code}}
-      {:error, _error} ->
+      {:error, error} ->
+        Logger.warn(inspect(error))
         {:error, message: "Server error"}
     end
   end

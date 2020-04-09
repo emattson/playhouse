@@ -17,14 +17,13 @@ defmodule Database.Catalog do
 
   def random_formatted_questions(size) do
     query =
-      from Question,
+      from q in Question,
+      join: a in Answer, as: :answer, on: a.question_id == q.id,
+      join: p in Pack, as: :pack, on: q.pack_id == p.id,
       order_by: fragment("RANDOM()"),
       limit: ^size
 
-    Repo.all(query)
-    |> Enum.map(fn x -> 
-      [x.content, x.answer]
-    end)
+    Repo.all(from [q, answer: a, pack: p] in query, select: {q.content, a.content, p.name, q.instruction})
   end
 
   def list_questions() do
@@ -36,7 +35,8 @@ defmodule Database.Catalog do
   end
 
   def play_list() do
-    ["Startups", "SAT", "Color", "Drawing", "Variety"]
+    Repo.all(Pack)
+    |> Enum.map(fn p -> p.name end)
   end
 
   def question_types do

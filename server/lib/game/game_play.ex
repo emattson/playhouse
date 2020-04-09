@@ -2,17 +2,10 @@ defmodule Game.GamePlay do
   @moduledoc """
   Main game logic
   """
-
   alias Game.{Act, GamePlay, Player}
+  require Logger
 
   defstruct act: 0, scene: 0, acts: [], players: [], pack: ""
-
-  # TODO: Move out once we migrate off of Airtable
-  @pack_map %{
-    "Startups": "Give a one line description of this startup",
-    "SAT": "Give a short definition of this word",
-    "Drawing": "Draw this"
-  }
 
   def new(question_sets, player_ids, initial_pack) do
     players = Enum.map player_ids, fn player_id ->
@@ -20,15 +13,13 @@ defmodule Game.GamePlay do
     end
 
     acts = Enum.map question_sets, fn question_set ->
-      question = Enum.at(question_set, 0)
-      answer = Enum.at(question_set, 1)
-      pack = Enum.at(question_set, 2) |> Enum.at(0)
-      instruction = Map.get(@pack_map, String.to_atom(pack))
+      {question, answer, pack, instruction} = question_set
+      Logger.info(question)
 
       submission = %{
         id: Ecto.UUID.generate,
-        name: "IS_ANSWER",
-        content: answer,
+        name: "1",
+        content: 1,
         endorsers: []
       }
 
@@ -37,7 +28,7 @@ defmodule Game.GamePlay do
       %Act{
         question: question,
         question_type: "text",
-        answer: answer,
+        answer: String.to_integer(answer),
         answer_type: answer_type,
         pack: pack,
         instruction: instruction,
@@ -45,17 +36,7 @@ defmodule Game.GamePlay do
       }
     end
 
-    case initial_pack do
-      "Variety" ->
-        acts = List.replace_at(acts, 1, generate_color_act())
-          |> List.replace_at(7, generate_color_act())
-        %GamePlay{acts: acts, players: players, pack: initial_pack}
-      "Color" ->
-        acts = Enum.map(0..9, fn _ -> generate_color_act() end)
-        %GamePlay{acts: acts, players: players, pack: initial_pack}
-      _ -> 
-        %GamePlay{acts: acts, players: players, pack: initial_pack}
-    end
+    %GamePlay{acts: acts, players: players, pack: initial_pack}
   end
 
   def get_answer_type(pack) do
@@ -63,36 +44,6 @@ defmodule Game.GamePlay do
       "Drawing" -> "drawing"
       _ -> "text"
     end
-  end
-
-  def generate_random_color() do
-    letters = "0123456789ABCDEF"
-    color = letters
-      |> String.split("", trim: true)
-      |> Enum.shuffle
-      |> Enum.take(6)
-      |> Enum.join("")
-    "#" <> color
-  end
-
-  def generate_color_act() do
-    random_color = generate_random_color()
-    %Act{
-      question: random_color,
-      question_type: "text",
-      answer: random_color,
-      answer_type: "color",
-      pack: "Color",
-      instruction: "What is the color of this hex?",
-      submissions: [
-        %{
-          id: Ecto.UUID.generate,
-          name: "IS_ANSWER",
-          content: random_color,
-          endorsers: []
-        }
-      ]
-    }
   end
 
   def player_new(game, player) do
@@ -104,11 +55,17 @@ defmodule Game.GamePlay do
   end
 
   def player_submit(game, submission, player_count) do
+    submission = %{ submission | content: elem(Integer.parse(submission.content), 0) }
     new_submission = [submission]
     current_index = game.act - 1
     current_act = Enum.at(game.acts, current_index)
-    current_submissions = current_act.submissions
-    new_submissions = Enum.shuffle(current_submissions ++ new_submission)
+    Logger.info(inspect(current_act))
+    game = case submission[:content] == current_act.answer do
+      true -> player_add_score(game, submission.name, 500)
+      _ -> game
+    end
+    current_submissions = current_act.submissions ++ new_submission
+    new_submissions = Enum.sort(current_submissions, &(&1[:content] >= &2[:content]))
     updated_act = %{current_act | submissions: new_submissions}
 
     new_acts =
@@ -149,6 +106,11 @@ defmodule Game.GamePlay do
     %{game | players: new_players}
   end
 
+  def closest_answer(current_act) do
+    Enum.filter(current_act.submissions, fn s -> s.content <=  current_act.answer end)
+    |> Enum.at(0)
+  end
+
   def player_endorse(game, name, submission_id, player_count) do
     current_index = game.act - 1
     current_act = Enum.at(game.acts, current_index)
@@ -158,9 +120,9 @@ defmodule Game.GamePlay do
       |> Enum.at(0)
 
     updated_game =
-      case submission.name == "IS_ANSWER" do
+      case submission.name === closest_answer(current_act).name do
         true -> player_add_score(game, name, 1000)
-        false -> player_add_score(game, submission.name, 500)
+        false -> game
       end
 
     player =

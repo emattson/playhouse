@@ -61,7 +61,7 @@ defmodule Game.GameServer do
 
   def init({game_code, pack}) do
     # TODO: Get questions and pack data from DB once we migrate away from Airtable
-    questions = Game.QuestionCache.get_questions(pack)
+    questions = Database.Catalog.random_formatted_questions(10)
 
     game = case :ets.lookup(:games_table, game_code) do
       [] ->
