@@ -19,7 +19,6 @@ defmodule Database.Catalog.Question do
     question
     |> cast(attrs, required_fields)
     |> validate_required(required_fields)
-    |> assoc_constraint(:user)	
-    |> assoc_constraint(:act)	
+    |> assoc_constraint(:pack)
   end
 end

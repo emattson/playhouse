@@ -15,6 +15,5 @@ defmodule Database.Catalog.Pack do
     question
     |> cast(attrs, required_fields)
     |> validate_required(required_fields)
-    |> assoc_constraint(:user)
   end
 end
