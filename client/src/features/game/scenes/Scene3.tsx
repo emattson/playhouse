@@ -8,10 +8,22 @@ import correctSvg from "features/game/components/correct.svg";
 
 export const Scene3Remote = ({ state, broadcast, name }: SceneProps) => {
   const firstPlayer = state.players[0];
+  let submissions = state.submissions;
+  if (state.submissions.filter((s) => s.content === state.answer).length < 1) {
+    submissions = submissions.concat([
+      {
+        id: -1,
+        name: "Correct answer",
+        content: state.answer || "-1",
+        endorsers: [],
+      },
+    ]);
+    submissions.sort((a, b) => parseInt(b.content) - parseInt(a.content));
+  }
   return (
     <section>
       <SubmissionsContainer>
-        {state.submissions.map((submission) => {
+        {submissions.map((submission) => {
           if (!submission.content) return null;
           const isRightAnswer = submission.content === state.answer;
           return (
